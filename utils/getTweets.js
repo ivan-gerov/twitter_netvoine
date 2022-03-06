@@ -10,7 +10,7 @@ export async function getLatest100Tweets(maxResults = 10, nextToken) {
   const params = {
     query: "#netvoine OR #нетвойне",
     max_results: maxResults,
-    expansions: "author_id",
+    expansions: "author_id,attachments.media_keys",
     tweet: {
       fields: [
         "created_at",
@@ -18,10 +18,14 @@ export async function getLatest100Tweets(maxResults = 10, nextToken) {
         "author_id",
         "entities",
         "public_metrics",
+        "attachments",
       ],
     },
     user: {
       fields: ["username", "location"],
+    },
+    media: {
+      fields: ["preview_image_url", "url"],
     },
   };
 
@@ -46,6 +50,18 @@ export async function getLatest100Tweets(maxResults = 10, nextToken) {
         )[0],
       },
     };
+    try {
+      let tweetMediaKeys = [...tweet_obj.attachments.media_keys];
+      let media = [
+        ...response.includes.media.filter((media) => {
+          if (tweetMediaKeys.includes(media.media_key)) {
+            return media;
+          }
+        }),
+      ];
+      tweet["media"] = media;
+    } catch {}
+
     if (tweet.user.location) {
       let location_lat_long = await geocode(tweet.user.location);
       if (location_lat_long) {
@@ -54,6 +70,7 @@ export async function getLatest100Tweets(maxResults = 10, nextToken) {
       }
     }
   }
+
   console.log("Retrieved Tweets: " + fullTweets.length);
   return { tweets: fullTweets, next_token: response.meta.next_token };
 }
